@@ -20,8 +20,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
   return (
     <nav
-      className="flex-shrink-0 w-full bg-white border-t border-[#E5EFE7] px-6 pt-2.5 pb-4.5 flex items-center justify-between shadow-[0_-2px_12px_rgba(11,56,33,0.03)] z-20"
-      aria-label="Bottom Navigation"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-[#E5EFE7] px-6 pt-2 pb-3.5 flex items-center justify-between shadow-[0_-4px_16px_rgba(11,56,33,0.05)]"
+      aria-label="Mobile Bottom Navigation"
     >
       {navItems.map(({ tab, label, icon: Icon }) => {
         const isActive = currentTab === tab;
