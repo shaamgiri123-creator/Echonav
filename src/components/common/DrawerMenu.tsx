@@ -47,10 +47,37 @@ export const DrawerMenu: React.FC<DrawerMenuProps> = ({
   onToggleConnection,
   onUpdateBattery,
 }) => {
+  const closeBtnRef = React.useRef<HTMLButtonElement | null>(null);
+  const previousFocusRef = React.useRef<HTMLElement | null>(null);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    previousFocusRef.current = document.activeElement as HTMLElement;
+    closeBtnRef.current?.focus();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      previousFocusRef.current?.focus();
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-0 z-50 flex"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Simulation Demonstration Menu"
+    >
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/45 backdrop-blur-sm transition-opacity"
@@ -72,9 +99,10 @@ export const DrawerMenu: React.FC<DrawerMenuProps> = ({
               <p className="text-xs text-[#5F7E6C]">Assistive Demonstration Suite</p>
             </div>
             <button
+              ref={closeBtnRef}
               onClick={onClose}
-              className="p-1 rounded-xl text-[#0B3821] hover:bg-slate-100 focus:outline-none"
-              aria-label="Close menu"
+              className="min-h-[44px] min-w-[44px] p-2 rounded-xl text-[#0B3821] hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-[#0D8249] flex items-center justify-center"
+              aria-label="Close menu drawer"
             >
               <X className="w-5 h-5" />
             </button>

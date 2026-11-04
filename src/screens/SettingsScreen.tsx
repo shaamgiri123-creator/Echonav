@@ -1,6 +1,8 @@
 import React from 'react';
-import { Volume2, Battery, Bluetooth, Power, Mic, Eye, Type, Clock, Cpu } from 'lucide-react';
-import { DeviceSettings } from '../types/echonav';
+import { Volume2, Battery, Bluetooth, Power, Mic, Eye, Type, Clock, Cpu, Languages } from 'lucide-react';
+import { DeviceSettings, EmergencyContact } from '../types/echonav';
+import { EmergencyContactsCard } from '../components/sos/EmergencyContactsCard';
+import { EmailSettingsCard } from '../components/email/EmailSettingsCard';
 
 interface SettingsScreenProps {
   settings: DeviceSettings;
@@ -9,6 +11,9 @@ interface SettingsScreenProps {
   onToggleConnection?: () => void;
   lastReadingTime?: string;
   simulationState?: 'idle' | 'running' | 'paused';
+  emergencyContacts?: EmergencyContact[];
+  onAddContact?: (contact: Omit<EmergencyContact, 'id'>) => void;
+  onRemoveContact?: (id: string) => void;
 }
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
@@ -18,6 +23,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onToggleConnection,
   lastReadingTime = '12:20:00 PM',
   simulationState = 'idle',
+  emergencyContacts = [],
+  onAddContact,
+  onRemoveContact,
 }) => {
   const distPct = Math.round(
     ((settings.distanceThresholdCm - 10) / (200 - 10)) * 100
@@ -33,6 +41,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-5 pb-8">
+      <h1 className="sr-only">EchoNav System Settings & Controls</h1>
       {/* Responsive Grid Layout */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
         {/* Left Column: Core Sensor & Feedback Controls */}
@@ -54,6 +63,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               max="200"
               step="5"
               value={settings.distanceThresholdCm}
+              aria-valuemin={10}
+              aria-valuemax={200}
+              aria-valuenow={settings.distanceThresholdCm}
+              aria-valuetext={`${settings.distanceThresholdCm} centimeters, ${settings.distanceSensitivity} sensitivity`}
               onChange={(e) => {
                 const val = Number(e.target.value);
                 const label = val <= 65 ? 'High' : val <= 135 ? 'Medium' : 'Low';
@@ -67,8 +80,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               style={{
                 background: `linear-gradient(to right, #16A34A ${distPct}%, #E4EBE5 ${distPct}%)`,
               }}
-              className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-              aria-label="Distance Sensitivity"
+              className="w-full h-1.5 rounded-full appearance-none cursor-pointer focus-visible:ring-2 focus-visible:ring-[#0D8249]"
+              aria-label="Distance Sensitivity Threshold"
             />
 
             <div className="flex justify-between items-center text-xs font-semibold text-[#7A9586] mt-2">
@@ -94,6 +107,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               max="3"
               step="1"
               value={vibValue}
+              aria-valuemin={1}
+              aria-valuemax={3}
+              aria-valuenow={vibValue}
+              aria-valuetext={`${settings.vibrationIntensity} vibration intensity`}
               onChange={(e) => {
                 const val = Number(e.target.value);
                 const level = val === 1 ? 'Low' : val === 2 ? 'Medium' : 'High';
@@ -105,8 +122,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               style={{
                 background: `linear-gradient(to right, #16A34A ${vibPct}%, #E4EBE5 ${vibPct}%)`,
               }}
-              className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-              aria-label="Vibration Intensity"
+              className="w-full h-1.5 rounded-full appearance-none cursor-pointer focus-visible:ring-2 focus-visible:ring-[#0D8249]"
+              aria-label="Vibration Haptic Intensity"
             />
 
             <div className="flex justify-between items-center text-xs font-semibold text-[#7A9586] mt-2">
@@ -121,24 +138,21 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               Audio Feedback & Speech Alerts
             </h4>
 
-            {/* Sound Notification Toggle */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#F0F7F2] flex items-center justify-center text-[#0B3821]">
-                  <Volume2 className="w-5 h-5 stroke-[2.2]" />
-                </div>
-                <div>
-                  <div className="text-[14.5px] font-extrabold text-[#0B3821] leading-tight">
-                    Audio Beep Tones
-                  </div>
-                  <div className="text-xs font-medium text-[#7A9586] mt-0.5 leading-tight">
-                    Proximity-dependent synthetic audio feedback
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={() => {
+            {/* Sound Notification Toggle (Full Row Clickable) */}
+            <div
+              onClick={() => {
+                const nextVal = !settings.soundNotification;
+                onUpdateSettings((prev) => ({
+                  ...prev,
+                  soundNotification: nextVal,
+                }));
+                if (nextVal && onPlayBeep) {
+                  onPlayBeep('High');
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === ' ' || e.key === 'Enter') {
+                  e.preventDefault();
                   const nextVal = !settings.soundNotification;
                   onUpdateSettings((prev) => ({
                     ...prev,
@@ -147,60 +161,135 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                   if (nextVal && onPlayBeep) {
                     onPlayBeep('High');
                   }
-                }}
-                className={`w-12 h-6.5 flex items-center rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${
+                }
+              }}
+              role="switch"
+              tabIndex={0}
+              aria-checked={settings.soundNotification}
+              aria-label="Audio Beep Tones"
+              className="flex items-center justify-between p-2.5 -mx-2.5 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors min-h-[44px] focus-visible:ring-2 focus-visible:ring-[#0D8249]"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#F0F7F2] flex items-center justify-center text-[#0B3821] shrink-0">
+                  <Volume2 className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <div>
+                  <div className="text-[14.5px] font-extrabold text-[#0B3821] leading-tight">
+                    Audio Beep Tones
+                  </div>
+                  <div className="text-xs font-semibold text-[#7A9586] mt-0.5 leading-tight">
+                    Proximity-dependent synthetic audio feedback
+                  </div>
+                </div>
+              </div>
+
+              <div
+                className={`w-12 h-6.5 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
                   settings.soundNotification ? 'bg-[#16A34A]' : 'bg-[#D6DFD9]'
                 }`}
-                aria-label="Toggle Audio Alerts"
-                role="switch"
-                aria-checked={settings.soundNotification}
               >
                 <div
                   className={`bg-white w-5.5 h-5.5 rounded-full shadow-md transform transition-transform duration-200 ${
                     settings.soundNotification ? 'translate-x-5.5' : 'translate-x-0'
                   }`}
                 />
-              </button>
+              </div>
             </div>
 
-            {/* Voice Guidance Toggle */}
-            <div className="flex items-center justify-between pt-3 border-t border-[#F0F5F1]">
+            {/* Voice Guidance Toggle (Full Row Clickable) */}
+            <div
+              onClick={() => {
+                onUpdateSettings((prev) => ({
+                  ...prev,
+                  voiceAlerts: !prev.voiceAlerts,
+                }));
+              }}
+              onKeyDown={(e) => {
+                if (e.key === ' ' || e.key === 'Enter') {
+                  e.preventDefault();
+                  onUpdateSettings((prev) => ({
+                    ...prev,
+                    voiceAlerts: !prev.voiceAlerts,
+                  }));
+                }
+              }}
+              role="switch"
+              tabIndex={0}
+              aria-checked={settings.voiceAlerts}
+              aria-label="Voice Guidance Announcements"
+              className="flex items-center justify-between p-2.5 -mx-2.5 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors pt-3 border-t border-[#F0F5F1] min-h-[44px] focus-visible:ring-2 focus-visible:ring-[#0D8249]"
+            >
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#E8F5E9] flex items-center justify-center text-[#0D8249]">
+                <div className="w-9 h-9 rounded-xl bg-[#E8F5E9] flex items-center justify-center text-[#0D8249] shrink-0">
                   <Mic className="w-5 h-5 stroke-[2.2]" />
                 </div>
                 <div>
                   <div className="text-[14.5px] font-extrabold text-[#0B3821] leading-tight">
                     Voice Guidance Announcements
                   </div>
-                  <div className="text-xs font-medium text-[#7A9586] mt-0.5 leading-tight">
+                  <div className="text-xs font-semibold text-[#7A9586] mt-0.5 leading-tight">
                     Natural speech alerts via Web Speech API
                   </div>
                 </div>
               </div>
 
-              <button
-                onClick={() => {
-                  onUpdateSettings((prev) => ({
-                    ...prev,
-                    voiceAlerts: !prev.voiceAlerts,
-                  }));
-                }}
-                className={`w-12 h-6.5 flex items-center rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${
+              <div
+                className={`w-12 h-6.5 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
                   settings.voiceAlerts ? 'bg-[#16A34A]' : 'bg-[#D6DFD9]'
                 }`}
-                aria-label="Toggle Voice Guidance"
-                role="switch"
-                aria-checked={settings.voiceAlerts}
               >
                 <div
                   className={`bg-white w-5.5 h-5.5 rounded-full shadow-md transform transition-transform duration-200 ${
                     settings.voiceAlerts ? 'translate-x-5.5' : 'translate-x-0'
                   }`}
                 />
-              </button>
+              </div>
+            </div>
+
+            {/* Voice Announcement Language Selector */}
+            <div className="pt-3 border-t border-[#F0F5F1] space-y-2">
+              <div className="flex items-center gap-2 text-[#0B3821]">
+                <Languages className="w-4.5 h-4.5 text-[#0D8249]" />
+                <span className="text-[14px] font-bold">Voice Alert Language</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onUpdateSettings((prev) => ({ ...prev, voiceLanguage: 'en' }))}
+                  className={`min-h-[40px] px-3 py-2 rounded-xl text-xs font-extrabold transition-all border ${
+                    settings.voiceLanguage !== 'ta'
+                      ? 'bg-[#16A34A] text-white border-[#16A34A] shadow-sm'
+                      : 'bg-[#F4F9F4] text-[#0B3821] border-[#DCE4DF] hover:bg-[#EAF5EC]'
+                  }`}
+                >
+                  English (Default)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onUpdateSettings((prev) => ({ ...prev, voiceLanguage: 'ta' }))}
+                  className={`min-h-[40px] px-3 py-2 rounded-xl text-xs font-extrabold transition-all border ${
+                    settings.voiceLanguage === 'ta'
+                      ? 'bg-[#16A34A] text-white border-[#16A34A] shadow-sm'
+                      : 'bg-[#F4F9F4] text-[#0B3821] border-[#DCE4DF] hover:bg-[#EAF5EC]'
+                  }`}
+                >
+                  தமிழ் (Tamil)
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* Emergency Contacts Management Card */}
+          {onAddContact && onRemoveContact && (
+            <EmergencyContactsCard
+              contacts={emergencyContacts}
+              onAddContact={onAddContact}
+              onRemoveContact={onRemoveContact}
+            />
+          )}
+
+          {/* Real-Time Email Integration: Emergency SOS Emails & Daily Reports */}
+          <EmailSettingsCard reportUserName={settings.deviceName || 'EchoNav User'} />
         </div>
 
         {/* Right Column: Accessibility, Battery & Device Monitoring */}
@@ -211,80 +300,104 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               Accessibility Preferences
             </h4>
 
-            {/* Large Text Mode */}
-            <div className="flex items-center justify-between">
+            {/* Large Text Mode (Full Row Clickable) */}
+            <div
+              onClick={() => {
+                onUpdateSettings((prev) => ({
+                  ...prev,
+                  largeText: !prev.largeText,
+                }));
+              }}
+              onKeyDown={(e) => {
+                if (e.key === ' ' || e.key === 'Enter') {
+                  e.preventDefault();
+                  onUpdateSettings((prev) => ({
+                    ...prev,
+                    largeText: !prev.largeText,
+                  }));
+                }
+              }}
+              role="switch"
+              tabIndex={0}
+              aria-checked={settings.largeText}
+              aria-label="Large Text Scaling"
+              className="flex items-center justify-between p-2.5 -mx-2.5 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors min-h-[44px] focus-visible:ring-2 focus-visible:ring-[#0D8249]"
+            >
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#F0F7F2] flex items-center justify-center text-[#0B3821]">
+                <div className="w-9 h-9 rounded-xl bg-[#F0F7F2] flex items-center justify-center text-[#0B3821] shrink-0">
                   <Type className="w-5 h-5 stroke-[2.2]" />
                 </div>
                 <div>
                   <div className="text-[14px] font-bold text-[#0B3821] leading-tight">
                     Large Text Scaling
                   </div>
-                  <div className="text-[11px] font-medium text-[#7A9586] mt-0.5 leading-tight">
+                  <div className="text-[11px] font-semibold text-[#7A9586] mt-0.5 leading-tight">
                     Enhanced font size for visually impaired users
                   </div>
                 </div>
               </div>
 
-              <button
-                onClick={() => {
-                  onUpdateSettings((prev) => ({
-                    ...prev,
-                    largeText: !prev.largeText,
-                  }));
-                }}
-                className={`w-12 h-6.5 flex items-center rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${
+              <div
+                className={`w-12 h-6.5 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
                   settings.largeText ? 'bg-[#16A34A]' : 'bg-[#D6DFD9]'
                 }`}
-                aria-label="Toggle Large Text"
-                role="switch"
-                aria-checked={settings.largeText}
               >
                 <div
                   className={`bg-white w-5.5 h-5.5 rounded-full shadow-md transform transition-transform duration-200 ${
                     settings.largeText ? 'translate-x-5.5' : 'translate-x-0'
                   }`}
                 />
-              </button>
+              </div>
             </div>
 
-            {/* High Contrast Mode */}
-            <div className="flex items-center justify-between pt-3 border-t border-[#F0F5F1]">
+            {/* High Contrast Mode (Full Row Clickable) */}
+            <div
+              onClick={() => {
+                onUpdateSettings((prev) => ({
+                  ...prev,
+                  highContrast: !prev.highContrast,
+                }));
+              }}
+              onKeyDown={(e) => {
+                if (e.key === ' ' || e.key === 'Enter') {
+                  e.preventDefault();
+                  onUpdateSettings((prev) => ({
+                    ...prev,
+                    highContrast: !prev.highContrast,
+                  }));
+                }
+              }}
+              role="switch"
+              tabIndex={0}
+              aria-checked={settings.highContrast}
+              aria-label="High Contrast Palette"
+              className="flex items-center justify-between p-2.5 -mx-2.5 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors pt-3 border-t border-[#F0F5F1] min-h-[44px] focus-visible:ring-2 focus-visible:ring-[#0D8249]"
+            >
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#F0F7F2] flex items-center justify-center text-[#0B3821]">
+                <div className="w-9 h-9 rounded-xl bg-[#F0F7F2] flex items-center justify-center text-[#0B3821] shrink-0">
                   <Eye className="w-5 h-5 stroke-[2.2]" />
                 </div>
                 <div>
                   <div className="text-[14px] font-bold text-[#0B3821] leading-tight">
                     High Contrast Palette
                   </div>
-                  <div className="text-[11px] font-medium text-[#7A9586] mt-0.5 leading-tight">
+                  <div className="text-[11px] font-semibold text-[#7A9586] mt-0.5 leading-tight">
                     Sharpen borders and maximize color contrast
                   </div>
                 </div>
               </div>
 
-              <button
-                onClick={() => {
-                  onUpdateSettings((prev) => ({
-                    ...prev,
-                    highContrast: !prev.highContrast,
-                  }));
-                }}
-                className={`w-12 h-6.5 flex items-center rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${
+              <div
+                className={`w-12 h-6.5 flex items-center rounded-full p-0.5 transition-colors duration-200 shrink-0 ${
                   settings.highContrast ? 'bg-[#16A34A]' : 'bg-[#D6DFD9]'
                 }`}
-                aria-label="Toggle High Contrast"
-                role="switch"
-                aria-checked={settings.highContrast}
               >
                 <div
                   className={`bg-white w-5.5 h-5.5 rounded-full shadow-md transform transition-transform duration-200 ${
                     settings.highContrast ? 'translate-x-5.5' : 'translate-x-0'
                   }`}
                 />
-              </button>
+              </div>
             </div>
           </div>
 

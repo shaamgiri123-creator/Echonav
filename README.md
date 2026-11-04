@@ -20,6 +20,17 @@ EchoNav is an assistive navigation web application designed to support visually 
 - Tailwind CSS
 - Lucide React
 - Browser LocalStorage
+- Resend (Email Delivery API)
+- Upstash Redis / Vercel KV (Background report state)
+
+## Email Integration & Deployment Environment Variables
+
+Configure these variables in your Vercel Project Settings:
+- `RESEND_API_KEY`: API key from Resend
+- `RESEND_FROM_EMAIL`: Sender address (e.g. `onboarding@resend.dev`)
+- `KV_REST_API_URL`: Vercel KV / Upstash Redis REST URL
+- `KV_REST_API_TOKEN`: Vercel KV / Upstash Redis REST Token
+- `CRON_SECRET`: Optional secret for securing Vercel cron endpoints
 
 ## Project Screens
 

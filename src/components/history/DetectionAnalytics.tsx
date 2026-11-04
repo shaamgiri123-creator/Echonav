@@ -107,6 +107,8 @@ export const DetectionAnalytics: React.FC<DetectionAnalyticsProps> = ({ history 
             <svg
               viewBox={`0 0 ${width} ${height}`}
               className="w-full h-20 overflow-visible"
+              role="img"
+              aria-label={`Chronological distance trend chart showing the last ${trendReadings.length} readings with an average obstacle proximity of ${avgDistance} centimeters.`}
             >
               <defs>
                 <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">

@@ -28,6 +28,9 @@ interface SidebarProps {
   onResetDemo: () => void;
   onSetDistance: (dist: number) => void;
   onToggleConnection: () => void;
+  onOpenVoiceAssistant?: () => void;
+  onOpenVision?: () => void;
+  onTriggerSOS?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -42,6 +45,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onResetDemo,
   onSetDistance,
   onToggleConnection,
+  onOpenVoiceAssistant,
+  onOpenVision: _onOpenVision,
+  onTriggerSOS,
 }) => {
   const navItems: { tab: TabType; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { tab: 'home', label: 'Home Dashboard', icon: Home },
@@ -80,9 +86,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={tab}
                 onClick={() => onTabChange(tab)}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-150 focus:outline-none ${
+                aria-current={isActive ? 'page' : undefined}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-150 focus-visible:ring-2 focus-visible:ring-[#0D8249] ${
                   isActive
-                    ? 'bg-[#EAF6ED] text-[#0D8249] shadow-sm border border-[#CDE7D2]'
+                    ? 'bg-[#EAF6ED] text-[#0A6035] shadow-sm border border-[#CDE7D2]'
                     : 'text-[#5F7E6C] hover:text-[#0B3821] hover:bg-[#F4F9F4]'
                 }`}
               >
@@ -96,6 +103,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
             );
           })}
         </nav>
+
+        {/* Phase 3 Smart Assistive Tools Shortcut Section */}
+        <div className="py-2 space-y-1.5 border-t border-[#F0F5F1]">
+          <span className="text-[10px] font-extrabold uppercase text-[#7A9586] tracking-wider px-3 block mb-1">
+            Smart Assistive Tools
+          </span>
+
+          {onOpenVoiceAssistant && (
+            <button
+              onClick={onOpenVoiceAssistant}
+              className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-bold text-[#0B3821] hover:bg-[#F2FAF4] border border-transparent hover:border-[#D5EAD8] transition-all"
+            >
+              <div className="flex items-center gap-2.5">
+                <Volume2 className="w-4 h-4 text-[#0D8249]" />
+                <span>Voice Assistant</span>
+              </div>
+              <span className="text-[10px] font-extrabold px-1.5 py-0.2 bg-emerald-100 text-[#0D8249] rounded">
+                EN/TA
+              </span>
+            </button>
+          )}
+
+          {onTriggerSOS && (
+            <button
+              onClick={onTriggerSOS}
+              className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-black text-red-700 hover:bg-red-50 border border-red-200 transition-all shadow-xs"
+            >
+              <div className="flex items-center gap-2.5">
+                <Power className="w-4 h-4 text-red-600 rotate-90" />
+                <span>Emergency SOS</span>
+              </div>
+              <span className="text-[10px] font-black px-1.5 py-0.2 bg-red-600 text-white rounded">
+                SOS
+              </span>
+            </button>
+          )}
+        </div>
 
         {/* Live Simulation Testing Panel */}
         <div className="mt-2 p-3.5 bg-[#F4F9F4] rounded-2xl border border-[#E3EDE4] space-y-2.5">

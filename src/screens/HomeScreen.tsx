@@ -2,7 +2,9 @@ import React from 'react';
 import { RadarDisplay } from '../components/home/RadarDisplay';
 import { AlertBanner } from '../components/home/AlertBanner';
 import { MetricCard } from '../components/common/MetricCard';
-import { MapPin, Battery, Activity, Compass, ShieldCheck } from 'lucide-react';
+import { ProximityThresholdBar } from '../components/home/ProximityThresholdBar';
+import { QuickPresetsBar } from '../components/home/QuickPresetsBar';
+import { MapPin, Battery, Compass, ShieldCheck, Activity } from 'lucide-react';
 import { DangerLevel, VibrationLevel } from '../types/echonav';
 
 interface HomeScreenProps {
@@ -12,6 +14,9 @@ interface HomeScreenProps {
   batteryPercentage: number;
   isConnected?: boolean;
   onSetDistance?: (distance: number) => void;
+  highThresholdCm?: number;
+  distanceThresholdCm?: number;
+  isVoiceAlertActive?: boolean;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -21,13 +26,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   batteryPercentage,
   isConnected = true,
   onSetDistance,
+  highThresholdCm = 40,
+  distanceThresholdCm = 80,
+  isVoiceAlertActive = false,
 }) => {
   return (
     <div className="w-full">
-      {/* DESKTOP LAYOUT (Full-width responsive grid) */}
+      <h1 className="sr-only">EchoNav Live Obstacle Detection Dashboard</h1>
+
+      {/* DESKTOP LAYOUT (12-Column Responsive Dashboard) */}
       <div className="hidden lg:grid grid-cols-12 gap-8 items-start">
         {/* Left Column: Prominent Hero Radar Card */}
-        <div className="col-span-7 bg-white rounded-3xl p-7 border border-[#E7EFE8] shadow-sm flex flex-col items-center justify-between min-h-[520px]">
+        <section
+          aria-labelledby="radar-heading"
+          className="col-span-7 bg-white rounded-3xl p-7 border border-[#E7EFE8] shadow-sm flex flex-col items-center justify-between min-h-[540px]"
+        >
           {/* Card Header */}
           <div className="w-full flex items-center justify-between pb-4 border-b border-[#F0F5F1]">
             <div className="flex items-center gap-3">
@@ -35,22 +48,28 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 <Compass className="w-5 h-5 stroke-[2.3]" />
               </div>
               <div>
-                <h3 className="text-lg font-extrabold text-[#0B3821] tracking-tight">
+                <h2 id="radar-heading" className="text-lg font-extrabold text-[#0B3821] tracking-tight">
                   Real-Time Obstacle Radar
-                </h3>
+                </h2>
                 <p className="text-xs font-medium text-[#5F7E6C]">
-                  Ultrasonic spatial proximity & walking cane guidance
+                  Ultrasonic spatial proximity & cane guidance visualizer
                 </p>
               </div>
             </div>
 
-            <span className="flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-[#0D8249] border border-emerald-200">
-              <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse" />
-              <span>Live Radar Feed</span>
+            <span className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full border ${
+              isConnected
+                ? 'bg-emerald-50 text-[#0D8249] border-emerald-200'
+                : 'bg-slate-100 text-slate-500 border-slate-200'
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${
+                isConnected ? 'bg-[#16A34A] animate-pulse' : 'bg-slate-400'
+              }`} />
+              <span>{isConnected ? 'Live Simulation Feed' : 'Standby / Offline'}</span>
             </span>
           </div>
 
-          {/* Central Radar Visualization */}
+          {/* Central Radar Visualization with Dynamic Cone Positioning */}
           <div className="py-4 my-auto flex items-center justify-center w-full">
             <RadarDisplay
               distance={distance}
@@ -63,33 +82,32 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <div className="w-full pt-3 border-t border-[#F0F5F1] flex items-center justify-between text-xs text-[#5F7E6C]">
             <span className="flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-[#0D8249]" />
-              Adaptive Proximity Zone: 10 cm – 200 cm
+              Active Range: 10 cm – 200 cm
             </span>
             <span className="font-semibold text-[#0B3821]">
               Status: {dangerLevel === 'High' ? '🔴 High Danger' : dangerLevel === 'Medium' ? '🟠 Caution Zone' : '🟢 Path Clear'}
             </span>
           </div>
-        </div>
+        </section>
 
-        {/* Right Column: Telemetry Cards & Live Alert Stack */}
-        <div className="col-span-5 space-y-5">
-          {/* 1. Live Dynamic Alert Banner */}
+        {/* Right Column: Telemetry, Dynamic Threshold Indicator & Presets */}
+        <section aria-label="Obstacle Telemetry and Guidance Controls" className="col-span-5 space-y-4">
+          {/* 1. Dynamic Alert Banner Card */}
           <AlertBanner
             distance={distance}
             dangerLevel={dangerLevel}
             isConnected={isConnected}
+            isVoiceAlertActive={isVoiceAlertActive}
           />
 
           {/* 2. Three Metric Cards */}
           <div className="grid grid-cols-3 gap-3">
-            {/* Distance */}
             <MetricCard
               icon={<MapPin className="w-5 h-5 text-[#0D8249] fill-[#0D8249]/20 stroke-[2.2]" />}
               value={isConnected ? `${distance} cm` : '--'}
               label="Distance"
             />
 
-            {/* Vibration Level */}
             <MetricCard
               icon={
                 <div className="flex items-end gap-1 h-5 w-5 justify-center">
@@ -108,7 +126,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               label="Vibration Level"
             />
 
-            {/* Battery */}
             <MetricCard
               icon={<Battery className="w-5 h-5 text-[#0D8249] stroke-[2.2]" />}
               value={isConnected ? `${batteryPercentage}%` : '--'}
@@ -116,82 +133,47 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             />
           </div>
 
-          {/* 3. Obstacle Guidance Details Card */}
-          <div className="bg-white rounded-3xl p-5 border border-[#E7EFE8] shadow-sm space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-[#F0F5F1]">
-              <span className="text-xs font-extrabold uppercase text-[#7A9586] tracking-wider flex items-center gap-1.5">
+          {/* 3. Dynamic Threshold Proximity Indicator (Phase 1 Feature) */}
+          <ProximityThresholdBar
+            currentDistance={distance}
+            dangerLevel={dangerLevel}
+            highThresholdCm={highThresholdCm}
+            distanceThresholdCm={distanceThresholdCm}
+            isConnected={isConnected}
+          />
+
+          {/* 4. Quick Testing Presets Bar (Desktop) */}
+          {onSetDistance && (
+            <QuickPresetsBar
+              currentDistance={distance}
+              onSetDistance={onSetDistance}
+            />
+          )}
+
+          {/* 5. Assistive Context Card */}
+          <div className="bg-white rounded-2xl p-4 border border-[#E7EFE8] shadow-sm text-xs text-[#5F7E6C] space-y-1">
+            <div className="flex items-center justify-between font-bold text-[#0B3821] pb-1 border-b border-[#F0F5F1]">
+              <span className="flex items-center gap-1.5">
                 <Activity className="w-3.5 h-3.5 text-[#0D8249]" />
                 Assistive Guidance
               </span>
-              <span className="text-xs font-bold text-[#0D8249]">
-                {dangerLevel === 'High' ? 'Urgent Alert' : dangerLevel === 'Medium' ? 'Advisory' : 'Safe to Proceed'}
+              <span className="text-[#0D8249]">
+                {dangerLevel === 'High' ? 'Urgent Alert' : dangerLevel === 'Medium' ? 'Caution' : 'Path Clear'}
               </span>
             </div>
-
-            <p className="text-xs text-[#5F7E6C] leading-relaxed">
+            <p className="pt-1 leading-relaxed">
               {dangerLevel === 'High'
-                ? 'Immediate physical obstacle detected within 40 cm. Strong tactile haptic pulsing activated on glove to advise immediate deceleration or course adjustment.'
+                ? 'Immediate physical obstacle within danger zone. Strong haptic pulses active.'
                 : dangerLevel === 'Medium'
-                ? 'Object detected in forward path between 41 cm and 80 cm. Gentle intermittent haptic vibration warns the user of an approaching physical structure.'
-                : 'Forward trajectory is unobstructed beyond 80 cm. System is actively scanning in standby navigation mode.'}
+                ? 'Approaching obstacle in forward path. Moderate haptic warning active.'
+                : 'Forward trajectory is clear. Standard standby scanning active.'}
             </p>
-
-            {/* Quick Interactive Presets Bar */}
-            {onSetDistance && (
-              <div className="pt-2 border-t border-[#F0F5F1]">
-                <span className="text-[11px] font-bold text-[#0B3821] block mb-2">
-                  Interactive Proximity Presets:
-                </span>
-                <div className="grid grid-cols-5 gap-1.5">
-                  <button
-                    onClick={() => onSetDistance(20)}
-                    className={`py-1.5 px-1 rounded-xl text-[11px] font-bold transition-all text-center ${
-                      distance === 20 ? 'bg-red-600 text-white shadow-sm' : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
-                    }`}
-                  >
-                    20 cm
-                  </button>
-                  <button
-                    onClick={() => onSetDistance(35)}
-                    className={`py-1.5 px-1 rounded-xl text-[11px] font-bold transition-all text-center ${
-                      distance === 35 ? 'bg-[#16A34A] text-white shadow-sm' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
-                    }`}
-                  >
-                    35 cm
-                  </button>
-                  <button
-                    onClick={() => onSetDistance(60)}
-                    className={`py-1.5 px-1 rounded-xl text-[11px] font-bold transition-all text-center ${
-                      distance === 60 ? 'bg-amber-500 text-white shadow-sm' : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
-                    }`}
-                  >
-                    60 cm
-                  </button>
-                  <button
-                    onClick={() => onSetDistance(85)}
-                    className={`py-1.5 px-1 rounded-xl text-[11px] font-bold transition-all text-center ${
-                      distance === 85 ? 'bg-[#0B3821] text-white shadow-sm' : 'bg-slate-100 text-[#0B3821] hover:bg-slate-200 border border-slate-200'
-                    }`}
-                  >
-                    85 cm
-                  </button>
-                  <button
-                    onClick={() => onSetDistance(120)}
-                    className={`py-1.5 px-1 rounded-xl text-[11px] font-bold transition-all text-center ${
-                      distance === 120 ? 'bg-[#0B3821] text-white shadow-sm' : 'bg-slate-100 text-[#0B3821] hover:bg-slate-200 border border-slate-200'
-                    }`}
-                  >
-                    120 cm
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
-        </div>
+        </section>
       </div>
 
-      {/* MOBILE LAYOUT (Full-width mobile screen without phone borders) */}
-      <div className="lg:hidden flex flex-col justify-between space-y-3.5 pb-6">
+      {/* MOBILE LAYOUT (Full-width mobile screen with no horizontal scroll) */}
+      <section aria-label="Mobile Obstacle Navigation Dashboard" className="lg:hidden flex flex-col space-y-3 pb-6">
         {/* Radar Card */}
         <div className="bg-white rounded-3xl p-4 border border-[#E7EFE8] shadow-sm flex items-center justify-center">
           <RadarDisplay
@@ -201,15 +183,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           />
         </div>
 
-        {/* Alert Banner Card */}
+        {/* Dynamic Alert Banner Card */}
         <AlertBanner
           distance={distance}
           dangerLevel={dangerLevel}
           isConnected={isConnected}
+          isVoiceAlertActive={isVoiceAlertActive}
         />
 
         {/* 3 Metric Cards */}
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-3 gap-2">
           <MetricCard
             icon={<MapPin className="w-5 h-5 text-[#0D8249] fill-[#0D8249]/20 stroke-[2.2]" />}
             value={isConnected ? `${distance} cm` : '--'}
@@ -240,7 +223,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             label="Battery"
           />
         </div>
-      </div>
+
+        {/* Mobile Dynamic Threshold Indicator */}
+        <ProximityThresholdBar
+          currentDistance={distance}
+          dangerLevel={dangerLevel}
+          highThresholdCm={highThresholdCm}
+          distanceThresholdCm={distanceThresholdCm}
+          isConnected={isConnected}
+        />
+
+        {/* Mobile Quick-Testing Presets (Phase 1 Feature - Now Directly on Mobile Home Screen) */}
+        {onSetDistance && (
+          <QuickPresetsBar
+            currentDistance={distance}
+            onSetDistance={onSetDistance}
+          />
+        )}
+      </section>
     </div>
   );
 };

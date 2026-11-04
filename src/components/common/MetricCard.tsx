@@ -19,12 +19,12 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       </div>
 
       {/* Main Value */}
-      <div className="text-[15px] font-extrabold text-[#0B3821] tracking-tight leading-tight truncate w-full">
+      <div className="metric-value text-[15px] font-extrabold text-[#0B3821] tracking-tight leading-tight w-full break-words">
         {value}
       </div>
 
       {/* Sub Label */}
-      <div className="text-[11px] font-semibold text-[#7A9586] mt-0.5 leading-tight truncate w-full">
+      <div className="metric-label text-[11px] font-semibold text-[#7A9586] mt-0.5 leading-tight w-full break-words">
         {label}
       </div>
     </div>

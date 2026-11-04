@@ -1,11 +1,21 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { TabType, DetectionReading, DeviceSettings, DangerLevel, VibrationLevel } from '../types/echonav';
+import {
+  TabType,
+  DetectionReading,
+  DeviceSettings,
+  DangerLevel,
+  VibrationLevel,
+  EmergencyContact,
+  GeoLocationData,
+} from '../types/echonav';
 import { speechService } from '../utils/speechAlerts';
+import { syncDailyDetections, buildDailySummary } from '../utils/emailApiClient';
 
 const STORAGE_KEYS = {
   HISTORY: 'echonav_history',
   SETTINGS: 'echonav_settings',
   DISTANCE: 'echonav_distance',
+  CONTACTS: 'echonav_sos_contacts',
 };
 
 const initialSampleHistory: DetectionReading[] = [
@@ -17,6 +27,11 @@ const initialSampleHistory: DetectionReading[] = [
   { id: '6', time: '09:36 AM', status: 'Clear Path', level: 'Safe', vibration: 'None', timestamp: Date.now() - 360000 },
 ];
 
+const defaultEmergencyContacts: EmergencyContact[] = [
+  { id: '1', name: 'Primary Guardian', phone: '+919876543210', relation: 'Family' },
+  { id: '2', name: 'Caregiver / Clinic', phone: '+919123456789', relation: 'Caregiver' },
+];
+
 const defaultSettings: DeviceSettings = {
   distanceSensitivity: 'Medium',
   distanceThresholdCm: 80,
@@ -24,6 +39,7 @@ const defaultSettings: DeviceSettings = {
   vibrationIntensity: 'Medium',
   soundNotification: true,
   voiceAlerts: true,
+  voiceLanguage: 'en',
   largeText: false,
   highContrast: false,
   batteryPercentage: 82,
@@ -37,6 +53,9 @@ export function useEchoNavStore() {
   const [currentTab, setCurrentTab] = useState<TabType>('home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDemoPanelOpen, setIsDemoPanelOpen] = useState(false);
+  const [isSOSModalOpen, setIsSOSModalOpen] = useState(false);
+  const [isVoiceAssistantOpen, setIsVoiceAssistantOpen] = useState(false);
+  const [isVisionModalOpen, setIsVisionModalOpen] = useState(false);
   const [lastReadingTime, setLastReadingTime] = useState<string>('09:41:00 AM');
 
   // 1. Settings state with localStorage
@@ -51,6 +70,34 @@ export function useEchoNavStore() {
     }
     return defaultSettings;
   });
+
+  // 2. Emergency Contacts state with localStorage
+  const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.CONTACTS);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // Ignore
+    }
+    return defaultEmergencyContacts;
+  });
+
+  // Save contacts whenever changed
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.CONTACTS, JSON.stringify(emergencyContacts));
+    } catch {
+      // Ignore
+    }
+  }, [emergencyContacts]);
+
+  // Sync speech service default language
+  useEffect(() => {
+    speechService.setLanguage(settings.voiceLanguage || 'en');
+  }, [settings.voiceLanguage]);
 
   // 2. Current distance state
   const [currentDistance, setCurrentDistance] = useState<number>(() => {
@@ -89,13 +136,15 @@ export function useEchoNavStore() {
     }
   }, [settings]);
 
-  // Save history whenever changed
+  // Save history whenever changed and sync summary to KV for background daily reports
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(history));
     } catch {
       // Ignore
     }
+    const summary = buildDailySummary(history);
+    syncDailyDetections(summary);
   }, [history]);
 
   // Compute current danger level and vibration feedback based on thresholds
@@ -190,7 +239,7 @@ export function useEchoNavStore() {
 
     // Web Speech API Voice Announcement (respects soundNotification & voiceAlerts)
     if (settings.soundNotification && settings.voiceAlerts) {
-      speechService.speakDangerAlert(level, true);
+      speechService.speakDangerAlert(level, true, settings.voiceLanguage);
     }
 
     // Deduplication check: only log if distance changed or is initial
@@ -210,7 +259,7 @@ export function useEchoNavStore() {
         ...prev.slice(0, 49),
       ]);
     }
-  }, [computeDangerLevel, computeVibrationLevel, playAlertSound, settings.soundNotification, settings.voiceAlerts]);
+  }, [computeDangerLevel, computeVibrationLevel, playAlertSound, settings.soundNotification, settings.voiceAlerts, settings.voiceLanguage]);
 
   // Automated simulation timer supporting start, pause, resume
   useEffect(() => {
@@ -254,6 +303,7 @@ export function useEchoNavStore() {
       vibrationIntensity: 'Medium',
       soundNotification: true,
       voiceAlerts: true,
+      voiceLanguage: 'en',
     }));
     setHistory(initialSampleHistory);
     try {
@@ -280,6 +330,34 @@ export function useEchoNavStore() {
     }));
   }, []);
 
+  const addEmergencyContact = useCallback((contact: Omit<EmergencyContact, 'id'>) => {
+    setEmergencyContacts((prev) => [
+      ...prev,
+      { ...contact, id: String(Date.now() + Math.random()) },
+    ]);
+  }, []);
+
+  const removeEmergencyContact = useCallback((id: string) => {
+    setEmergencyContacts((prev) => prev.filter((c) => c.id !== id));
+  }, []);
+
+  const dispatchEmergencySOS = useCallback((_loc: GeoLocationData, _contact: EmergencyContact) => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setHistory((prev) => [
+      {
+        id: String(Date.now()),
+        time: timeStr,
+        status: 'SOS Emergency',
+        level: 'High',
+        vibration: 'Strong',
+        distance: 10,
+        timestamp: Date.now(),
+      },
+      ...prev.slice(0, 49),
+    ]);
+  }, []);
+
   const currentDangerLevel = computeDangerLevel(currentDistance);
   const currentVibration = computeVibrationLevel(currentDangerLevel);
 
@@ -293,10 +371,20 @@ export function useEchoNavStore() {
     history,
     settings,
     setSettings,
+    emergencyContacts,
+    addEmergencyContact,
+    removeEmergencyContact,
+    dispatchEmergencySOS,
     isMenuOpen,
     setIsMenuOpen,
     isDemoPanelOpen,
     setIsDemoPanelOpen,
+    isSOSModalOpen,
+    setIsSOSModalOpen,
+    isVoiceAssistantOpen,
+    setIsVoiceAssistantOpen,
+    isVisionModalOpen,
+    setIsVisionModalOpen,
     simulationState,
     startSimulation,
     pauseSimulation,

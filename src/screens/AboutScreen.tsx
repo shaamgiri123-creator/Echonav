@@ -16,6 +16,7 @@ import {
 export const AboutScreen: React.FC = () => {
   return (
     <div className="w-full max-w-5xl mx-auto space-y-5 pb-8">
+      <h1 className="sr-only">About EchoNav Assistive Navigation System</h1>
       {/* Desktop Responsive Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
         {/* Left Column: Brand, Mission, & Credits */}

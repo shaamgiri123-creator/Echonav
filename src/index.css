@@ -7,6 +7,113 @@
   color-scheme: light;
 }
 
+/* ----------------------------------------------------
+   STEP 1: LARGE TEXT MODE (Proportional Root Scaling)
+   ---------------------------------------------------- */
+html.large-text {
+  font-size: 114%; /* Clean proportional scaling across all rem units */
+}
+
+.large-text body {
+  line-height: 1.6;
+}
+
+.large-text .metric-value {
+  font-size: 1.125rem !important;
+}
+
+.large-text .metric-label {
+  font-size: 0.8rem !important;
+}
+
+/* ----------------------------------------------------
+   STEP 2: HIGH CONTRAST MODE (WCAG 2.1 AA Compliant)
+   ---------------------------------------------------- */
+html.high-contrast body,
+.high-contrast {
+  background-color: #EBF3EC !important;
+  color: #02140A !important;
+}
+
+/* Card contrast */
+.high-contrast .bg-white {
+  background-color: #FFFFFF !important;
+  border-color: #0B3821 !important;
+  border-width: 2px !important;
+  box-shadow: 0 4px 12px rgba(2, 20, 10, 0.12) !important;
+}
+
+/* Text contrast enhancements */
+.high-contrast [class*="text-[#5F7E6C]"],
+.high-contrast [class*="text-[#7A9586]"],
+.high-contrast [class*="text-[#8B9E94]"],
+.high-contrast .text-slate-500,
+.high-contrast .text-slate-600 {
+  color: #163E26 !important;
+  font-weight: 600 !important;
+}
+
+.high-contrast [class*="text-[#0B3821]"],
+.high-contrast .text-slate-700,
+.high-contrast .text-slate-800 {
+  color: #02140A !important;
+  font-weight: 800 !important;
+}
+
+.high-contrast [class*="text-[#0D8249]"] {
+  color: #0A6035 !important;
+  font-weight: 800 !important;
+}
+
+/* Borders and dividers */
+.high-contrast [class*="border-[#E7EFE8]"],
+.high-contrast [class*="border-[#F0F5F1]"],
+.high-contrast [class*="border-[#E5EFE7]"],
+.high-contrast [class*="border-[#DCE4DF]"],
+.high-contrast [class*="divide-[#F0F5F1]"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: #0B3821 !important;
+}
+
+/* Slider Track & Thumb Contrast */
+.high-contrast input[type="range"] {
+  border: 2px solid #0B3821 !important;
+}
+
+.high-contrast input[type="range"]::-webkit-slider-thumb {
+  border: 2.5px solid #000000 !important;
+  box-shadow: 0 0 0 2px #FFFFFF !important;
+  transform: scale(1.15);
+}
+
+.high-contrast input[type="range"]::-moz-range-thumb {
+  border: 2.5px solid #000000 !important;
+  box-shadow: 0 0 0 2px #FFFFFF !important;
+  transform: scale(1.15);
+}
+
+/* ----------------------------------------------------
+   STEP 4: GLOBAL KEYBOARD FOCUS VISIBILITY
+   ---------------------------------------------------- */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+[role="button"]:focus-visible,
+[role="switch"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2.5px solid #0D8249 !important;
+  outline-offset: 2.5px !important;
+}
+
+.high-contrast button:focus-visible,
+.high-contrast a:focus-visible,
+.high-contrast input:focus-visible,
+.high-contrast [role="button"]:focus-visible,
+.high-contrast [role="switch"]:focus-visible,
+.high-contrast [tabindex]:focus-visible {
+  outline: 3px solid #000000 !important;
+  outline-offset: 3px !important;
+}
+
 /* Custom smooth pulse animation for radar rings */
 @keyframes radar-pulse {
   0% {
